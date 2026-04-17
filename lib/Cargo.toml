@@ -1,0 +1,33 @@
+[package]
+name = "aget-lib"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "Core library for aget"
+
+[dependencies]
+tokio.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+toml.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+url.workspace = true
+dirs.workspace = true
+dom_smoothie.workspace = true
+htmd.workspace = true
+rusqlite = { version = "0.32", features = ["bundled"] }
+sha2 = "0.10"
+httpdate = "1"
+tiktoken-rs = "0.6"
+serde_json = "1"
+scraper = "0.20"
+regex = "1"
+
+[dev-dependencies]
+tokio.workspace = true
+mockito = "1"
+tempfile = "3"

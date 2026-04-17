@@ -1,0 +1,247 @@
+/// A documentation-framework profile: how to detect it and where its content lives.
+pub struct Profile {
+    pub key: &'static str,
+    /// Substring matched against the value of <meta name="generator"> (case-insensitive).
+    pub generator_pattern: Option<&'static str>,
+    /// If any of these substrings appear in the HTML, treat the page as a match.
+    pub needles: &'static [&'static str],
+    /// CSS selectors (in priority order) used to locate the content root for extraction.
+    pub content_selectors: &'static [&'static str],
+}
+
+pub static VITEPRESS: Profile = Profile {
+    key: "vitepress",
+    generator_pattern: Some("vitepress"),
+    needles: &["id=\"VPContent\"", "class=\"VPDoc", "class=\"vp-doc"],
+    content_selectors: &["#VPContent", ".VPDoc", ".vp-doc"],
+};
+
+pub static DOCUSAURUS: Profile = Profile {
+    key: "docusaurus",
+    generator_pattern: Some("docusaurus"),
+    needles: &["class=\"theme-doc-markdown", "class=\"markdown markdown"],
+    content_selectors: &[".theme-doc-markdown", ".markdown"],
+};
+
+pub static MINTLIFY: Profile = Profile {
+    key: "mintlify",
+    generator_pattern: Some("mintlify"),
+    needles: &["id=\"content-area\"", "id=\"content-container\""],
+    content_selectors: &["#content-container", "#content-area"],
+};
+
+pub static STARLIGHT: Profile = Profile {
+    key: "starlight",
+    generator_pattern: Some("starlight"),
+    needles: &["class=\"sl-markdown-content\"", "id=\"starlight__sidebar\""],
+    content_selectors: &[".sl-markdown-content"],
+};
+
+pub static MKDOCS: Profile = Profile {
+    key: "mkdocs",
+    generator_pattern: Some("mkdocs"),
+    needles: &[
+        "data-md-component=\"content\"",
+        "data-md-component=content",
+        "id=\"mkdocs_search_modal\"",
+    ],
+    content_selectors: &[".md-content__inner", ".md-content"],
+};
+
+pub static PROFILES: &[&Profile] = &[&VITEPRESS, &DOCUSAURUS, &MINTLIFY, &STARLIGHT, &MKDOCS];
+
+/// Detect which (if any) profile best matches the given HTML. First match wins.
+pub fn detect_profile(html: &str) -> Option<&'static Profile> {
+    let generator = extract_generator_meta(html);
+    for profile in PROFILES {
+        if let (Some(pattern), Some(value)) = (profile.generator_pattern, generator.as_deref()) {
+            if value.to_lowercase().contains(&pattern.to_lowercase()) {
+                return Some(*profile);
+            }
+        }
+        for needle in profile.needles {
+            if html.contains(needle) {
+                return Some(*profile);
+            }
+        }
+    }
+    None
+}
+
+fn extract_generator_meta(html: &str) -> Option<String> {
+    use std::sync::OnceLock;
+    static SELECTOR: OnceLock<scraper::Selector> = OnceLock::new();
+    let selector = SELECTOR.get_or_init(|| {
+        scraper::Selector::parse(r#"meta[name="generator"]"#).expect("static selector must compile")
+    });
+    let document = scraper::Html::parse_document(html);
+    document
+        .select(selector)
+        .next()
+        .and_then(|el| el.value().attr("content"))
+        .map(String::from)
+}
+
+/// Try to extract markdown from `html` using `profile`'s content selectors.
+/// Returns `None` if no selector matches or the result is empty.
+pub fn extract_with_profile(html: &str, profile: &Profile, url: &url::Url) -> Option<String> {
+    let _ = url; // reserved for future use (e.g. resolving relative links)
+    let document = scraper::Html::parse_document(html);
+    for selector_str in profile.content_selectors {
+        let selector = match scraper::Selector::parse(selector_str) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+        let element = match document.select(&selector).next() {
+            Some(e) => e,
+            None => continue,
+        };
+        let inner_html = element.inner_html();
+        let markdown = htmd::convert(&inner_html).ok()?;
+        let trimmed = markdown.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_detect_profile_returns_none_for_empty_html() {
+        assert!(detect_profile("").is_none());
+    }
+
+    #[test]
+    fn test_detect_profile_returns_none_when_no_profile_matches() {
+        assert!(detect_profile("<html><body>plain</body></html>").is_none());
+    }
+
+    #[test]
+    fn test_detect_vitepress_via_needle() {
+        let html = r#"<html><body><div id="VPContent">hi</div></body></html>"#;
+        let p = detect_profile(html).expect("vitepress should match");
+        assert_eq!(p.key, "vitepress");
+    }
+
+    #[test]
+    fn test_detect_vitepress_via_generator_meta() {
+        let html = r#"<html><head><meta name="generator" content="VitePress 1.0.0"></head><body></body></html>"#;
+        let p = detect_profile(html).expect("vitepress generator should match");
+        assert_eq!(p.key, "vitepress");
+    }
+
+    #[test]
+    fn test_detect_generator_match_is_case_insensitive() {
+        let html = r#"<meta name="generator" content="VITEPRESS">"#;
+        assert!(detect_profile(html).is_some());
+    }
+
+    #[test]
+    fn test_detect_generator_meta_is_attribute_order_independent() {
+        let html = r#"<html><head><meta content="VitePress 1.0.0" name="generator"></head><body></body></html>"#;
+        let p = detect_profile(html).expect("vitepress should match with content-then-name order");
+        assert_eq!(p.key, "vitepress");
+    }
+
+    #[test]
+    fn test_detect_generator_meta_handles_single_quoted_attrs() {
+        let html = r#"<meta name='generator' content='VitePress'>"#;
+        let p = detect_profile(html).expect("vitepress should match with single-quoted attrs");
+        assert_eq!(p.key, "vitepress");
+    }
+
+    #[test]
+    fn test_extract_with_profile_finds_content_root_and_returns_markdown() {
+        let html = r#"
+            <html><body>
+              <nav>Should be excluded</nav>
+              <div id="VPContent">
+                <h1>Hello</h1>
+                <p>This is a paragraph with <strong>bold</strong> text.</p>
+              </div>
+              <footer>Also excluded</footer>
+            </body></html>
+        "#;
+        let url = url::Url::parse("https://example.com/page").unwrap();
+        let md = extract_with_profile(html, &VITEPRESS, &url).expect("should extract");
+        assert!(md.contains("Hello"), "title should be present, got: {}", md);
+        assert!(
+            md.contains("**bold**") || md.contains("__bold__"),
+            "bold should be present"
+        );
+        assert!(
+            !md.contains("Should be excluded"),
+            "nav should NOT be present"
+        );
+        assert!(
+            !md.contains("Also excluded"),
+            "footer should NOT be present"
+        );
+    }
+
+    #[test]
+    fn test_extract_with_profile_returns_none_when_no_selector_matches() {
+        let html = r#"<html><body><p>nothing matches the VP selectors here</p></body></html>"#;
+        let url = url::Url::parse("https://example.com/").unwrap();
+        assert!(extract_with_profile(html, &VITEPRESS, &url).is_none());
+    }
+
+    #[test]
+    fn test_extract_with_profile_returns_none_when_content_root_is_empty() {
+        let html = r#"<html><body><div id="VPContent">   </div></body></html>"#;
+        let url = url::Url::parse("https://example.com/").unwrap();
+        assert!(extract_with_profile(html, &VITEPRESS, &url).is_none());
+    }
+
+    #[test]
+    fn test_detect_docusaurus_via_class() {
+        let html =
+            r#"<html><body><div class="theme-doc-markdown markdown"><p>x</p></div></body></html>"#;
+        let p = detect_profile(html).expect("docusaurus should match");
+        assert_eq!(p.key, "docusaurus");
+    }
+
+    #[test]
+    fn test_detect_mintlify_via_id() {
+        let html = r#"<html><body><div id="content-area">x</div></body></html>"#;
+        let p = detect_profile(html).expect("mintlify should match");
+        assert_eq!(p.key, "mintlify");
+    }
+
+    #[test]
+    fn test_detect_starlight_via_generator() {
+        let html = r#"<meta name="generator" content="Starlight 0.30.0">"#;
+        let p = detect_profile(html).expect("starlight should match");
+        assert_eq!(p.key, "starlight");
+    }
+
+    #[test]
+    fn test_detect_mkdocs_via_data_attr() {
+        let html = r#"<html><body><div data-md-component="content"><p>x</p></div></body></html>"#;
+        let p = detect_profile(html).expect("mkdocs should match");
+        assert_eq!(p.key, "mkdocs");
+    }
+
+    #[test]
+    fn test_extract_docusaurus_content() {
+        let html = r#"
+            <html><body>
+              <header>nav</header>
+              <article class="theme-doc-markdown markdown">
+                <h1>Doc Title</h1>
+                <p>Body text.</p>
+              </article>
+            </body></html>
+        "#;
+        let url = url::Url::parse("https://example.com/").unwrap();
+        let p = detect_profile(html).unwrap();
+        assert_eq!(p.key, "docusaurus");
+        let md = extract_with_profile(html, p, &url).unwrap();
+        assert!(md.contains("Doc Title"));
+        assert!(!md.contains("nav"));
+    }
+}
