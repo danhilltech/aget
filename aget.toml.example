@@ -1,0 +1,18 @@
+# Example aget configuration file.
+# Copy to ~/.aget/config.toml and customize.
+
+# GitHub: rewrite to raw readme, fetch directly without engine chain
+[domains."github.com"]
+url_transform = "https://raw.githubusercontent.com/{owner}/{repo}/refs/heads/main/readme.md"
+engine = "direct"
+
+# A docs site that supports native markdown — prefer accept_md first
+[domains."docs.example.com"]
+engines = ["accept_md", "dot_md", "html_extract"]
+
+[domains."docs.example.com".headers]
+Authorization = "Bearer your-token-here"
+
+# An API that requires a key
+[domains."api.example.com".headers]
+X-API-Key = "your-api-key-here"
