@@ -21,6 +21,6 @@ dom_smoothie.workspace = true
 htmd.workspace = true
 
 [dev-dependencies]
-tokio = { version = "1", features = ["full"] }
+tokio.workspace = true
 mockito = "1"
 tempfile = "3"
