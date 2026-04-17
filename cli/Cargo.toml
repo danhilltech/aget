@@ -1,0 +1,28 @@
+[package]
+name = "aget"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "Fetch URLs as Markdown"
+keywords = ["cli", "markdown", "wget", "curl"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "aget"
+path = "src/main.rs"
+
+[dependencies]
+aget-lib = { path = "../lib" }
+clap.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tempfile = "3"
+mockito = "1"
