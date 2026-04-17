@@ -4,3 +4,6 @@ pub mod error;
 pub mod fetcher;
 pub mod pipeline;
 pub mod quality;
+
+pub use config::Config;
+pub use error::{AgetError, Result};
