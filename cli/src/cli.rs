@@ -1,0 +1,27 @@
+use clap::Parser;
+use std::path::PathBuf;
+
+#[derive(Parser, Debug)]
+#[command(name = "aget")]
+#[command(about = "Fetch a URL and output its content as Markdown")]
+#[command(version)]
+pub struct Cli {
+    /// URL to fetch and convert to Markdown
+    pub url: String,
+
+    /// Write output to FILE instead of stdout
+    #[arg(short = 'o', long = "output", value_name = "FILE")]
+    pub output: Option<PathBuf>,
+
+    /// Config file path
+    #[arg(short = 'C', long = "config", value_name = "PATH")]
+    pub config: Option<PathBuf>,
+
+    /// Print engine attempts and quality results to stderr
+    #[arg(short = 'v', long = "verbose")]
+    pub verbose: bool,
+
+    /// Force a specific engine (overrides domain rules): accept_md, dot_md, html_extract
+    #[arg(long = "engine", value_name = "NAME")]
+    pub engine: Option<String>,
+}
