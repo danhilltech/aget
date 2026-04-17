@@ -7,3 +7,4 @@ pub mod quality;
 
 pub use config::Config;
 pub use error::{AgetError, Result};
+pub use pipeline::{Pipeline, PipelineResult};
