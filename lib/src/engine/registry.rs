@@ -17,20 +17,14 @@ pub fn engine_by_name(name: &str) -> Option<Box<dyn Engine>> {
 pub fn build_chain(rule: Option<&DomainRule>) -> Vec<Box<dyn Engine>> {
     let names: &[&str] = if let Some(r) = rule {
         if let Some(ref engines) = r.engines {
-            return engines
-                .iter()
-                .filter_map(|n| engine_by_name(n))
-                .collect();
+            return engines.iter().filter_map(|n| engine_by_name(n)).collect();
         }
         DEFAULT_CHAIN
     } else {
         DEFAULT_CHAIN
     };
 
-    names
-        .iter()
-        .filter_map(|n| engine_by_name(n))
-        .collect()
+    names.iter().filter_map(|n| engine_by_name(n)).collect()
 }
 
 #[cfg(test)]

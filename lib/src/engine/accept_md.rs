@@ -49,7 +49,10 @@ mod tests {
         let mut server = mockito::Server::new_async().await;
         let mock = server
             .mock("GET", "/")
-            .match_header("Accept", mockito::Matcher::Regex("text/markdown".to_string()))
+            .match_header(
+                "Accept",
+                mockito::Matcher::Regex("text/markdown".to_string()),
+            )
             .with_status(200)
             .with_header("content-type", "text/markdown")
             .with_body("# Hello\n\nWorld content here with **bold**.")

@@ -97,10 +97,7 @@ Authorization = "Bearer token123"
         assert_eq!(gh.engine.as_deref(), Some("direct"));
 
         let docs = config.domains.get("docs.example.com").unwrap();
-        assert_eq!(
-            docs.engines.as_ref().unwrap(),
-            &["accept_md", "dot_md"]
-        );
+        assert_eq!(docs.engines.as_ref().unwrap(), &["accept_md", "dot_md"]);
         assert_eq!(
             docs.headers.get("Authorization").map(String::as_str),
             Some("Bearer token123")
@@ -118,8 +115,7 @@ Authorization = "Bearer token123"
     #[test]
     fn test_apply_url_transform_github() {
         let url = url::Url::parse("https://github.com/danhilltech/goyolov5").unwrap();
-        let template =
-            "https://raw.githubusercontent.com/{owner}/{repo}/refs/heads/main/readme.md";
+        let template = "https://raw.githubusercontent.com/{owner}/{repo}/refs/heads/main/readme.md";
         let result = apply_url_transform(&url, template).unwrap();
         assert_eq!(
             result.as_str(),

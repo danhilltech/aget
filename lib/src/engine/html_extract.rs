@@ -8,9 +8,8 @@ use url::Url;
 pub struct HtmlExtractEngine;
 
 fn html_to_markdown(html: &str, url: &Url) -> Result<String> {
-    let mut readability =
-        dom_smoothie::Readability::new(html, Some(url.as_str()), None)
-            .map_err(|e| AgetError::extraction(e.to_string()))?;
+    let mut readability = dom_smoothie::Readability::new(html, Some(url.as_str()), None)
+        .map_err(|e| AgetError::extraction(e.to_string()))?;
 
     let article = readability
         .parse()
@@ -34,8 +33,7 @@ impl Engine for HtmlExtractEngine {
         domain_headers: &HashMap<String, String>,
     ) -> Result<EngineResult> {
         let resp = fetcher.get(url, domain_headers).await?;
-        let content = html_to_markdown(&resp.body, url)
-            .unwrap_or_else(|_| resp.body.clone());
+        let content = html_to_markdown(&resp.body, url).unwrap_or_else(|_| resp.body.clone());
         Ok(EngineResult::Success(content))
     }
 }

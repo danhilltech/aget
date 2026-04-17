@@ -121,7 +121,10 @@ mod tests {
         let mut server = mockito::Server::new_async().await;
         server
             .mock("GET", "/")
-            .match_header("Accept", mockito::Matcher::Regex("text/markdown".to_string()))
+            .match_header(
+                "Accept",
+                mockito::Matcher::Regex("text/markdown".to_string()),
+            )
             .with_status(200)
             .with_header("content-type", "text/markdown")
             .with_body(GOOD_MD)
@@ -167,7 +170,10 @@ mod tests {
         // accept_md: returns short content that fails quality
         server
             .mock("GET", "/")
-            .match_header("Accept", mockito::Matcher::Regex("text/markdown".to_string()))
+            .match_header(
+                "Accept",
+                mockito::Matcher::Regex("text/markdown".to_string()),
+            )
             .with_status(200)
             .with_header("content-type", "text/markdown")
             .with_body(BAD_MD)

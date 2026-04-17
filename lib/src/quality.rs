@@ -6,7 +6,9 @@ pub fn passes_quality(content: &str) -> bool {
     if content.len() < MIN_LENGTH {
         return false;
     }
-    MARKDOWN_MARKERS.iter().any(|marker| content.contains(marker))
+    MARKDOWN_MARKERS
+        .iter()
+        .any(|marker| content.contains(marker))
 }
 
 #[cfg(test)]
