@@ -21,6 +21,9 @@ pub enum AgetError {
 
     #[error("Extraction error: {0}")]
     Extraction(String),
+
+    #[error("Cache error: {0}")]
+    Cache(#[from] rusqlite::Error),
 }
 
 impl AgetError {
