@@ -38,8 +38,8 @@ impl HeadResult {
 
 pub fn extract_title(content: &str) -> Option<String> {
     for line in content.lines() {
-        if line.starts_with("# ") {
-            return Some(line[2..].trim().to_string());
+        if let Some(stripped) = line.strip_prefix("# ") {
+            return Some(stripped.trim().to_string());
         }
     }
     None

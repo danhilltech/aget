@@ -16,7 +16,7 @@ async fn test_fetches_native_markdown() {
         .create_async()
         .await;
 
-    let output = aget().arg(&server.url()).output().unwrap();
+    let output = aget().arg(server.url()).output().unwrap();
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -38,7 +38,7 @@ async fn test_output_to_file() {
     let out_path = out_file.path().to_str().unwrap().to_string();
 
     let output = aget()
-        .arg(&server.url())
+        .arg(server.url())
         .arg("-o")
         .arg(&out_path)
         .output()
@@ -88,7 +88,7 @@ async fn test_head_plain_text() {
     let output = aget()
         .arg("--head")
         .arg("--no-cache")
-        .arg(&server.url())
+        .arg(server.url())
         .output()
         .unwrap();
 
@@ -119,7 +119,7 @@ async fn test_head_json() {
         .arg("--head")
         .arg("--json")
         .arg("--no-cache")
-        .arg(&server.url())
+        .arg(server.url())
         .output()
         .unwrap();
 
