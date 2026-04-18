@@ -47,7 +47,7 @@ pub fn extract_description(content: &str) -> Option<String> {
         if trimmed.is_empty() || trimmed.starts_with('#') {
             continue;
         }
-        if trimmed.len() <= 200 {
+        if trimmed.chars().count() <= 200 {
             return Some(trimmed.to_string());
         }
         let truncated: String = trimmed.chars().take(200).collect();
@@ -63,7 +63,7 @@ pub fn compute_size_kb(size_bytes: usize) -> f64 {
 pub fn count_tokens(content: &str) -> usize {
     tiktoken_rs::cl100k_base()
         .map(|bpe| bpe.encode_with_special_tokens(content).len())
-        .unwrap_or_else(|_| content.len() / 4)
+        .unwrap_or_else(|_| content.len() / 4) // ~4 bytes per token heuristic
 }
 
 #[cfg(test)]
