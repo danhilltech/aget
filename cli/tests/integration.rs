@@ -80,7 +80,7 @@ async fn test_head_plain_text() {
         .with_status(200)
         .with_header("content-type", "text/markdown")
         .with_body(
-            "# Test Title\n\nThis is the first paragraph of content.",
+            "# Test Title\n\nThis is the first paragraph of content with **bold** text and [a link](https://example.com). It is long enough to pass the quality check and contains markdown markers.",
         )
         .create_async()
         .await;
@@ -110,7 +110,7 @@ async fn test_head_json() {
         .with_status(200)
         .with_header("content-type", "text/markdown")
         .with_body(
-            "# Test Title\n\nThis is the first paragraph of content.",
+            "# Test Title\n\nThis is the first paragraph of content with **bold** text and [a link](https://example.com). It is long enough to pass the quality check and contains markdown markers.",
         )
         .create_async()
         .await;
@@ -142,6 +142,16 @@ fn test_head_and_output_are_mutually_exclusive() {
         .arg("--head")
         .arg("-o")
         .arg("/tmp/aget-test-out.md")
+        .arg("https://example.com")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+}
+
+#[test]
+fn test_json_without_head_exits_nonzero() {
+    let output = aget()
+        .arg("--json")
         .arg("https://example.com")
         .output()
         .unwrap();

@@ -23,10 +23,6 @@ async fn main() {
 async fn run() -> Result<()> {
     let cli = Cli::parse();
 
-    if cli.json && !cli.head {
-        eprintln!("aget: warning: --json has no effect without --head");
-    }
-
     let url = Url::parse(&cli.url).context("invalid URL")?;
 
     let config = match &cli.config {

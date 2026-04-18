@@ -34,6 +34,6 @@ pub struct Cli {
     pub head: bool,
 
     /// Output --head result as JSON
-    #[arg(long = "json")]
+    #[arg(long = "json", requires = "head")]
     pub json: bool,
 }
