@@ -1,6 +1,8 @@
+use crate::caching_fetcher::CachingFetcher;
 use crate::config::{apply_url_transform, DomainRule};
 use crate::engine::{registry, EngineResult};
 use crate::error::Result;
+use crate::fetch::Fetch;
 use crate::fetcher::Fetcher;
 use crate::quality::passes_quality;
 use std::collections::HashMap;
@@ -14,16 +16,25 @@ pub struct PipelineResult {
 }
 
 pub struct Pipeline {
-    fetcher: Fetcher,
+    fetcher: Box<dyn Fetch>,
 }
 
 static EMPTY_HEADERS: LazyLock<HashMap<String, String>> = LazyLock::new(HashMap::new);
 
 impl Pipeline {
-    pub fn new() -> Result<Self> {
-        Ok(Self {
-            fetcher: Fetcher::new()?,
-        })
+    pub fn new(no_cache: bool) -> Result<Self> {
+        let fetcher: Box<dyn Fetch> = if no_cache {
+            Box::new(Fetcher::new()?)
+        } else {
+            match CachingFetcher::new() {
+                Ok(cf) => Box::new(cf),
+                Err(e) => {
+                    eprintln!("[aget] warning: could not open cache ({e}), running without cache");
+                    Box::new(Fetcher::new()?)
+                }
+            }
+        };
+        Ok(Self { fetcher })
     }
 
     pub async fn run(
@@ -63,7 +74,7 @@ impl Pipeline {
                 eprintln!("[aget] trying engine: {}", engine.name());
             }
 
-            match engine.fetch(&url, &self.fetcher, domain_headers).await? {
+            match engine.fetch(&url, self.fetcher.as_ref(), domain_headers).await? {
                 EngineResult::Skip(reason) => {
                     if verbose {
                         eprintln!("[aget] {}: skipped ({})", engine.name(), reason);
@@ -131,7 +142,7 @@ mod tests {
             .create_async()
             .await;
 
-        let pipeline = Pipeline::new().unwrap();
+        let pipeline = Pipeline::new(true).unwrap();  // no_cache=true avoids DB in tests
         let url = Url::parse(&server.url()).unwrap();
         let result = pipeline.run(&url, None, false).await.unwrap();
 
@@ -150,7 +161,7 @@ mod tests {
             .await;
 
         let base = server.url();
-        let pipeline = Pipeline::new().unwrap();
+        let pipeline = Pipeline::new(true).unwrap();  // no_cache=true avoids DB in tests
         let url = Url::parse(&format!("{}/original", base)).unwrap();
         let rule = DomainRule {
             url_transform: Some(format!("{}/readme.md", base)),
@@ -194,7 +205,7 @@ mod tests {
             .create_async()
             .await;
 
-        let pipeline = Pipeline::new().unwrap();
+        let pipeline = Pipeline::new(true).unwrap();  // no_cache=true avoids DB in tests
         let url = Url::parse(&server.url()).unwrap();
         let result = pipeline.run(&url, None, false).await.unwrap();
 
