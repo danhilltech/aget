@@ -28,4 +28,12 @@ pub struct Cli {
     /// Disable HTTP response caching
     #[arg(long = "no-cache")]
     pub no_cache: bool,
+
+    /// Print a content summary (size, tokens, title) instead of outputting Markdown
+    #[arg(long = "head", conflicts_with = "output")]
+    pub head: bool,
+
+    /// Output --head result as JSON
+    #[arg(long = "json")]
+    pub json: bool,
 }

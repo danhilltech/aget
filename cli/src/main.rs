@@ -3,6 +3,7 @@ mod cli;
 use aget_lib::{
     config::{Config, DomainRule},
     engine::registry::engine_by_name,
+    head::head,
     pipeline::Pipeline,
 };
 use anyhow::{Context, Result};
@@ -21,6 +22,10 @@ async fn main() {
 
 async fn run() -> Result<()> {
     let cli = Cli::parse();
+
+    if cli.json && !cli.head {
+        eprintln!("aget: warning: --json has no effect without --head");
+    }
 
     let url = Url::parse(&cli.url).context("invalid URL")?;
 
@@ -47,6 +52,20 @@ async fn run() -> Result<()> {
     }
 
     let pipeline = Pipeline::new(cli.no_cache).context("failed to create pipeline")?;
+
+    if cli.head {
+        let result = head(&url, &pipeline, rule.as_ref())
+            .await
+            .context("head failed")?;
+        let output = if cli.json {
+            result.to_json()
+        } else {
+            result.to_plain_text()
+        };
+        println!("{}", output);
+        return Ok(());
+    }
+
     let result = pipeline
         .run(&url, rule.as_ref(), cli.verbose)
         .await
