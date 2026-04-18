@@ -1,4 +1,5 @@
 pub mod cache;
+pub mod caching_fetcher;
 pub mod config;
 pub mod engine;
 pub mod error;
