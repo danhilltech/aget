@@ -19,6 +19,9 @@ url.workspace = true
 dirs.workspace = true
 dom_smoothie.workspace = true
 htmd.workspace = true
+rusqlite = { version = "0.32", features = ["bundled"] }
+sha2 = "0.10"
+httpdate = "1"
 
 [dev-dependencies]
 tokio.workspace = true
