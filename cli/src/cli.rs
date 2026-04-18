@@ -24,4 +24,8 @@ pub struct Cli {
     /// Force a specific engine (overrides domain rules): accept_md, dot_md, html_extract
     #[arg(long = "engine", value_name = "NAME")]
     pub engine: Option<String>,
+
+    /// Disable HTTP response caching
+    #[arg(long = "no-cache")]
+    pub no_cache: bool,
 }

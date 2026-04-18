@@ -46,7 +46,7 @@ async fn run() -> Result<()> {
         });
     }
 
-    let pipeline = Pipeline::new().context("failed to create pipeline")?;
+    let pipeline = Pipeline::new(cli.no_cache).context("failed to create pipeline")?;
     let result = pipeline
         .run(&url, rule.as_ref(), cli.verbose)
         .await
