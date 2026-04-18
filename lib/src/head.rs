@@ -1,4 +1,8 @@
 use serde::Serialize;
+use crate::config::DomainRule;
+use crate::error::Result;
+use crate::pipeline::Pipeline;
+use url::Url;
 
 #[derive(Debug, Serialize)]
 pub struct HeadResult {
@@ -64,6 +68,21 @@ pub fn count_tokens(content: &str) -> usize {
     tiktoken_rs::cl100k_base()
         .map(|bpe| bpe.encode_with_special_tokens(content).len())
         .unwrap_or_else(|_| content.len() / 4) // ~4 bytes per token heuristic
+}
+
+pub async fn head(url: &Url, pipeline: &Pipeline, rule: Option<&DomainRule>) -> Result<HeadResult> {
+    let result = pipeline.run(url, rule, false).await?;
+    let content = &result.content;
+    let size_bytes = content.len();
+    Ok(HeadResult {
+        url: url.to_string(),
+        engine_used: result.engine_used,
+        size_bytes,
+        size_kb: compute_size_kb(size_bytes),
+        token_count: count_tokens(content),
+        title: extract_title(content),
+        description: extract_description(content),
+    })
 }
 
 #[cfg(test)]
@@ -212,5 +231,31 @@ mod tests {
         assert!(json.contains("\"title\""));
         assert!(json.contains("\"description\""));
         assert!(json.contains("null")); // description is None → null
+    }
+
+    #[tokio::test]
+    async fn test_head_returns_metadata_from_pipeline() {
+        let mut server = mockito::Server::new_async().await;
+        server
+            .mock("GET", "/")
+            .with_status(200)
+            .with_header("content-type", "text/markdown")
+            .with_body("# My Title\n\nFirst paragraph of content here with enough text to pass quality checks. This is a longer description that ensures we meet the minimum length requirements for content to be considered valid by the quality module.")
+            .create_async()
+            .await;
+
+        let pipeline = crate::pipeline::Pipeline::new(true).unwrap();
+        let url = url::Url::parse(&server.url()).unwrap();
+        let result = head(&url, &pipeline, None).await.unwrap();
+
+        assert_eq!(result.title.as_deref(), Some("My Title"));
+        assert_eq!(
+            result.description.as_deref(),
+            Some("First paragraph of content here with enough text to pass quality checks. This is a longer description that ensures we meet the minimum length requirements for content to be considered valid by the qua…")
+        );
+        assert!(result.size_bytes > 0);
+        assert!(result.token_count > 0);
+        assert_eq!(result.url, url.to_string());
+        assert_eq!(result.engine_used, "accept_md");
     }
 }
