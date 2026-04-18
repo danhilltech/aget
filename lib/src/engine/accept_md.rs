@@ -1,6 +1,6 @@
 use crate::engine::{Engine, EngineResult};
 use crate::error::Result;
-use crate::fetcher::Fetcher;
+use crate::fetch::Fetch;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use url::Url;
@@ -16,7 +16,7 @@ impl Engine for AcceptMdEngine {
     async fn fetch(
         &self,
         url: &Url,
-        fetcher: &Fetcher,
+        fetcher: &dyn Fetch,
         domain_headers: &HashMap<String, String>,
     ) -> Result<EngineResult> {
         let mut headers = domain_headers.clone();
@@ -43,6 +43,7 @@ impl Engine for AcceptMdEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fetcher::Fetcher;
 
     #[tokio::test]
     async fn test_accept_md_success_markdown() {

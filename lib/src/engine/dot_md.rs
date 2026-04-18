@@ -1,6 +1,6 @@
 use crate::engine::{Engine, EngineResult};
 use crate::error::Result;
-use crate::fetcher::Fetcher;
+use crate::fetch::Fetch;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use url::Url;
@@ -26,7 +26,7 @@ impl Engine for DotMdEngine {
     async fn fetch(
         &self,
         url: &Url,
-        fetcher: &Fetcher,
+        fetcher: &dyn Fetch,
         domain_headers: &HashMap<String, String>,
     ) -> Result<EngineResult> {
         let md_url = match append_md_extension(url) {
@@ -51,6 +51,7 @@ impl Engine for DotMdEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fetcher::Fetcher;
 
     #[test]
     fn test_append_md_extension() {

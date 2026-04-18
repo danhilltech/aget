@@ -1,6 +1,6 @@
 use crate::engine::{Engine, EngineResult};
 use crate::error::{AgetError, Result};
-use crate::fetcher::Fetcher;
+use crate::fetch::Fetch;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use url::Url;
@@ -29,7 +29,7 @@ impl Engine for HtmlExtractEngine {
     async fn fetch(
         &self,
         url: &Url,
-        fetcher: &Fetcher,
+        fetcher: &dyn Fetch,
         domain_headers: &HashMap<String, String>,
     ) -> Result<EngineResult> {
         let resp = fetcher.get(url, domain_headers).await?;
@@ -41,6 +41,7 @@ impl Engine for HtmlExtractEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fetcher::Fetcher;
 
     const SIMPLE_HTML: &str = r#"<!DOCTYPE html>
 <html>

@@ -4,7 +4,7 @@ pub mod html_extract;
 pub mod registry;
 
 use crate::error::Result;
-use crate::fetcher::Fetcher;
+use crate::fetch::Fetch;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use url::Url;
@@ -15,7 +15,7 @@ pub trait Engine: Send + Sync {
     async fn fetch(
         &self,
         url: &Url,
-        fetcher: &Fetcher,
+        fetcher: &dyn Fetch,
         domain_headers: &HashMap<String, String>,
     ) -> Result<EngineResult>;
 }
