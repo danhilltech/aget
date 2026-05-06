@@ -67,9 +67,11 @@ Strategy matrix (five entries):
 | ------------------------------- | ----------------- | ------------------------ |
 | `x86_64-unknown-linux-gnu`      | `ubuntu-latest`   | `aget-linux-amd64`       |
 | `aarch64-unknown-linux-gnu`     | `ubuntu-24.04-arm`| `aget-linux-arm64`       |
-| `x86_64-apple-darwin`           | `macos-13`        | `aget-darwin-amd64`      |
+| `x86_64-apple-darwin`           | `macos-latest`*   | `aget-darwin-amd64`      |
 | `aarch64-apple-darwin`          | `macos-latest`    | `aget-darwin-arm64`      |
 | `x86_64-pc-windows-msvc`        | `windows-latest`  | `aget-windows-amd64.exe` |
+
+\* The Intel-Mac build cross-compiles from `macos-latest` (Apple Silicon) using `--target x86_64-apple-darwin`. GitHub retired the `macos-13` Intel runner; remaining native Intel runners (`macos-15-intel`, `*-large`, `*-xlarge`) are paid. Cross-compilation is free, well-supported by the Rust + Apple toolchain, and works because all our deps use `rustls-tls` (no OpenSSL/C cross-compile pain).
 
 Steps per matrix entry:
 
