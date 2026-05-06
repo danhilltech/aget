@@ -27,6 +27,7 @@ Options:
   -C, --config <PATH>   Config file path
   -v, --verbose         Print engine attempts and quality results to stderr
       --engine <NAME>   Force a specific engine: accept_md, dot_md, html_extract
+      --chunk-size <N>  Split output into N-char chunks (requires --output)
 ```
 
 **Examples:**
@@ -40,6 +41,9 @@ aget -o article.md https://example.com/article
 
 # Force HTML extraction engine
 aget --engine html_extract https://example.com/article
+
+# Save a long page as multiple files (page-001.md, page-002.md, ...)
+aget -o page.md --chunk-size 8000 https://example.com/long-doc
 ```
 
 ## How it works
