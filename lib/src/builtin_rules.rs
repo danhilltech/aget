@@ -41,13 +41,21 @@ mod tests {
     #[test]
     fn test_github_rule_present_with_expected_fields() {
         let rules = builtin_rules();
-        let gh = rules.get("github.com").expect("github.com rule should exist");
+        let gh = rules
+            .get("github.com")
+            .expect("github.com rule should exist");
         assert_eq!(gh.engine.as_deref(), Some("direct"));
         assert!(
-            gh.url_transform.as_deref().unwrap().contains("raw.githubusercontent.com"),
+            gh.url_transform
+                .as_deref()
+                .unwrap()
+                .contains("raw.githubusercontent.com"),
             "transform should target raw.githubusercontent.com",
         );
-        assert!(gh.path_pattern.is_some(), "github rule should be path-scoped");
+        assert!(
+            gh.path_pattern.is_some(),
+            "github rule should be path-scoped"
+        );
     }
 
     #[test]

@@ -241,7 +241,10 @@ engine = "html_extract"
         // User domain present
         assert!(config.domains.contains_key("example.com"));
         // Built-in github.com still present (user didn't override it)
-        let gh = config.domains.get("github.com").expect("github.com built-in should remain");
+        let gh = config
+            .domains
+            .get("github.com")
+            .expect("github.com built-in should remain");
         assert_eq!(gh.engine.as_deref(), Some("direct"));
     }
 
@@ -263,7 +266,8 @@ engine = "html_extract"
     fn test_builtin_github_path_pattern_rejects_blob_urls() {
         let config = Config::default().with_builtins();
         let rule = config.domains.get("github.com").unwrap();
-        let blob_url = url::Url::parse("https://github.com/wevm/curl.md/blob/main/README.md").unwrap();
+        let blob_url =
+            url::Url::parse("https://github.com/wevm/curl.md/blob/main/README.md").unwrap();
         assert!(!domain_rule_matches(rule, &blob_url));
     }
 }
