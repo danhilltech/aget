@@ -70,16 +70,17 @@ pub fn detect_profile(html: &str) -> Option<&'static Profile> {
 
 fn extract_generator_meta(html: &str) -> Option<String> {
     use std::sync::OnceLock;
-    static RE: OnceLock<regex::Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| {
-        regex::Regex::new(
-            r#"(?is)<meta\s+[^>]*name\s*=\s*["']generator["'][^>]*content\s*=\s*["']([^"']+)["']"#,
-        )
-        .expect("static regex must compile")
+    static SELECTOR: OnceLock<scraper::Selector> = OnceLock::new();
+    let selector = SELECTOR.get_or_init(|| {
+        scraper::Selector::parse(r#"meta[name="generator"]"#)
+            .expect("static selector must compile")
     });
-    re.captures(html)
-        .and_then(|c| c.get(1))
-        .map(|m| m.as_str().to_string())
+    let document = scraper::Html::parse_document(html);
+    document
+        .select(selector)
+        .next()
+        .and_then(|el| el.value().attr("content"))
+        .map(String::from)
 }
 
 /// Try to extract markdown from `html` using `profile`'s content selectors.
@@ -138,6 +139,20 @@ mod tests {
     fn test_detect_generator_match_is_case_insensitive() {
         let html = r#"<meta name="generator" content="VITEPRESS">"#;
         assert!(detect_profile(html).is_some());
+    }
+
+    #[test]
+    fn test_detect_generator_meta_is_attribute_order_independent() {
+        let html = r#"<html><head><meta content="VitePress 1.0.0" name="generator"></head><body></body></html>"#;
+        let p = detect_profile(html).expect("vitepress should match with content-then-name order");
+        assert_eq!(p.key, "vitepress");
+    }
+
+    #[test]
+    fn test_detect_generator_meta_handles_single_quoted_attrs() {
+        let html = r#"<meta name='generator' content='VitePress'>"#;
+        let p = detect_profile(html).expect("vitepress should match with single-quoted attrs");
+        assert_eq!(p.key, "vitepress");
     }
 
     #[test]
