@@ -77,7 +77,9 @@ fn extract_generator_meta(html: &str) -> Option<String> {
         )
         .expect("static regex must compile")
     });
-    re.captures(html).and_then(|c| c.get(1)).map(|m| m.as_str().to_string())
+    re.captures(html)
+        .and_then(|c| c.get(1))
+        .map(|m| m.as_str().to_string())
 }
 
 /// Try to extract markdown from `html` using `profile`'s content selectors.
@@ -153,9 +155,18 @@ mod tests {
         let url = url::Url::parse("https://example.com/page").unwrap();
         let md = extract_with_profile(html, &VITEPRESS, &url).expect("should extract");
         assert!(md.contains("Hello"), "title should be present, got: {}", md);
-        assert!(md.contains("**bold**") || md.contains("__bold__"), "bold should be present");
-        assert!(!md.contains("Should be excluded"), "nav should NOT be present");
-        assert!(!md.contains("Also excluded"), "footer should NOT be present");
+        assert!(
+            md.contains("**bold**") || md.contains("__bold__"),
+            "bold should be present"
+        );
+        assert!(
+            !md.contains("Should be excluded"),
+            "nav should NOT be present"
+        );
+        assert!(
+            !md.contains("Also excluded"),
+            "footer should NOT be present"
+        );
     }
 
     #[test]
@@ -174,7 +185,8 @@ mod tests {
 
     #[test]
     fn test_detect_docusaurus_via_class() {
-        let html = r#"<html><body><div class="theme-doc-markdown markdown"><p>x</p></div></body></html>"#;
+        let html =
+            r#"<html><body><div class="theme-doc-markdown markdown"><p>x</p></div></body></html>"#;
         let p = detect_profile(html).expect("docusaurus should match");
         assert_eq!(p.key, "docusaurus");
     }

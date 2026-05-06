@@ -162,7 +162,10 @@ mod tests {
 
         assert!(matches!(result, EngineResult::Success(_)));
         if let EngineResult::Success(content) = result {
-            assert!(content.contains("Hello"), "fallback should still extract content");
+            assert!(
+                content.contains("Hello"),
+                "fallback should still extract content"
+            );
         }
     }
 }

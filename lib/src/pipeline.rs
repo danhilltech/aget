@@ -215,4 +215,50 @@ mod tests {
         // Should get some content from best-effort
         assert!(!result.content.is_empty());
     }
+
+    #[tokio::test]
+    async fn test_pipeline_uses_profile_via_html_extract_engine() {
+        let mut server = mockito::Server::new_async().await;
+        // accept_md and dot_md both miss; html_extract should detect Mintlify and extract.
+        server
+            .mock("GET", "/")
+            .match_header(
+                "Accept",
+                mockito::Matcher::Regex("text/markdown".to_string()),
+            )
+            .with_status(404)
+            .create_async()
+            .await;
+        server
+            .mock("GET", "/.md")
+            .with_status(404)
+            .create_async()
+            .await;
+        server
+            .mock("GET", "/")
+            .with_status(200)
+            .with_header("content-type", "text/html")
+            .with_body(
+                r#"<html><body>
+              <header>NAV</header>
+              <main id="content-area">
+                <h1>Mintlify Page</h1>
+                <p>Lots of doc body text here that should land in the markdown output.</p>
+                <p>Second paragraph with **emphasis** and a [link](https://example.com).</p>
+              </main>
+              <footer>FOOT</footer>
+            </body></html>"#,
+            )
+            .create_async()
+            .await;
+
+        let pipeline = Pipeline::new(true).unwrap();
+        let url = Url::parse(&server.url()).unwrap();
+        let result = pipeline.run(&url, None, false).await.unwrap();
+
+        assert_eq!(result.engine_used, "html_extract");
+        assert!(result.content.contains("Mintlify Page"));
+        assert!(!result.content.contains("NAV"));
+        assert!(!result.content.contains("FOOT"));
+    }
 }
