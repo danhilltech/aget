@@ -36,4 +36,13 @@ pub struct Cli {
     /// Output --head result as JSON
     #[arg(long = "json", requires = "head")]
     pub json: bool,
+
+    /// Split output into multiple files of this max char count (requires --output)
+    #[arg(
+        long = "chunk-size",
+        value_name = "N",
+        requires = "output",
+        conflicts_with = "head"
+    )]
+    pub chunk_size: Option<usize>,
 }
