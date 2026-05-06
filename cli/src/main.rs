@@ -23,7 +23,18 @@ async fn main() {
 async fn run() -> Result<()> {
     let cli = Cli::parse();
 
-    let url = Url::parse(&cli.url).context("invalid URL")?;
+    if let Some(shell) = cli.completions {
+        let mut cmd = <Cli as clap::CommandFactory>::command();
+        let bin_name = cmd.get_name().to_string();
+        clap_complete::generate(shell, &mut cmd, bin_name, &mut std::io::stdout());
+        return Ok(());
+    }
+
+    let url_str = cli
+        .url
+        .as_deref()
+        .expect("clap guarantees url is set when --completions is absent");
+    let url = Url::parse(url_str).context("invalid URL")?;
 
     let config = match &cli.config {
         Some(path) => Config::load(path).context("failed to load config")?,
