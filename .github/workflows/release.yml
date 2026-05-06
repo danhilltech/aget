@@ -1,0 +1,99 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            asset: aget-linux-amd64
+            ext: ""
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            asset: aget-linux-arm64
+            ext: ""
+          - os: macos-13
+            target: x86_64-apple-darwin
+            asset: aget-darwin-amd64
+            ext: ""
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            asset: aget-darwin-arm64
+            ext: ""
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            asset: aget-windows-amd64.exe
+            ext: ".exe"
+    steps:
+      - uses: actions/checkout@v6
+      - run: rustup toolchain install stable --profile minimal
+      - run: rustup target add ${{ matrix.target }}
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ matrix.target }}-
+      - run: cargo build --release --locked --workspace --target ${{ matrix.target }}
+      - name: Strip binary
+        if: runner.os != 'Windows'
+        run: strip target/${{ matrix.target }}/release/aget
+      - name: Stage asset
+        shell: bash
+        run: cp "target/${{ matrix.target }}/release/aget${{ matrix.ext }}" "${{ matrix.asset }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: ${{ matrix.asset }}
+
+  release:
+    name: Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Generate checksums
+        working-directory: artifacts
+        run: sha256sum * > SHA256SUMS
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view ${{ github.ref_name }} &>/dev/null; then
+            echo "Release already exists, uploading assets..."
+            gh release upload ${{ github.ref_name }} artifacts/* --clobber
+          else
+            echo "Creating new release..."
+            gh release create ${{ github.ref_name }} artifacts/* --generate-notes
+          fi
