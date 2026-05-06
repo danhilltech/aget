@@ -28,6 +28,7 @@ Options:
   -v, --verbose         Print engine attempts and quality results to stderr
       --engine <NAME>   Force a specific engine: accept_md, dot_md, html_extract
       --chunk-size <N>  Split output into N-char chunks (requires --output)
+      --completions <SHELL>  Print shell completion script (bash, zsh, fish, elvish, powershell)
 ```
 
 **Examples:**
@@ -44,6 +45,12 @@ aget --engine html_extract https://example.com/article
 
 # Save a long page as multiple files (page-001.md, page-002.md, ...)
 aget -o page.md --chunk-size 8000 https://example.com/long-doc
+
+# Install bash completions
+aget --completions bash > ~/.local/share/bash-completion/completions/aget
+
+# Or for zsh (e.g. into a directory in $fpath)
+aget --completions zsh > ~/.zfunc/_aget
 ```
 
 ## How it works
