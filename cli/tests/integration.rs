@@ -157,3 +157,80 @@ fn test_json_without_head_exits_nonzero() {
         .unwrap();
     assert!(!output.status.success());
 }
+
+#[tokio::test]
+async fn test_chunk_size_writes_single_file_when_content_fits() {
+    let mut server = Server::new_async().await;
+    let _mock = server
+        .mock("GET", "/")
+        .with_status(200)
+        .with_header("content-type", "text/markdown")
+        .with_body("# Title\n\nShort content with **bold** and a [link](http://example.com) — well under any chunk size.")
+        .create_async()
+        .await;
+
+    let dir = tempfile::tempdir().unwrap();
+    let out_path = dir.path().join("page.md");
+
+    let output = aget()
+        .arg(server.url())
+        .arg("-o")
+        .arg(&out_path)
+        .arg("--chunk-size")
+        .arg("10000")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(out_path.exists(), "single-file output should be at original path");
+    // Multi-file outputs should NOT have been created
+    assert!(!dir.path().join("page-001.md").exists());
+}
+
+#[tokio::test]
+async fn test_chunk_size_writes_multiple_files_when_content_large() {
+    let mut server = Server::new_async().await;
+    // Build content with multiple H2 sections so chunking has somewhere to split
+    let body = format!(
+        "# Title\n\n{}",
+        (1..=5)
+            .map(|i| format!("## Section {}\n\n{}\n\n", i, "Content text here. ".repeat(20)))
+            .collect::<String>()
+    );
+    let _mock = server
+        .mock("GET", "/")
+        .with_status(200)
+        .with_header("content-type", "text/markdown")
+        .with_body(body)
+        .create_async()
+        .await;
+
+    let dir = tempfile::tempdir().unwrap();
+    let out_path = dir.path().join("page.md");
+
+    let output = aget()
+        .arg(server.url())
+        .arg("-o")
+        .arg(&out_path)
+        .arg("--chunk-size")
+        .arg("300")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(dir.path().join("page-001.md").exists(), "first chunk file should exist");
+    assert!(dir.path().join("page-002.md").exists(), "second chunk file should exist");
+    // The original `page.md` path should NOT have been written when chunked
+    assert!(!out_path.exists(), "single-file path should not be written when chunked");
+}
+
+#[test]
+fn test_chunk_size_without_output_exits_nonzero() {
+    let output = aget()
+        .arg("https://example.com")
+        .arg("--chunk-size")
+        .arg("1000")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+}
