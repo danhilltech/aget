@@ -16,6 +16,7 @@ pub struct DomainRule {
     pub engines: Option<Vec<String>>,
     #[serde(default)]
     pub headers: HashMap<String, String>,
+    pub path_pattern: Option<String>,
 }
 
 impl Config {
@@ -63,6 +64,17 @@ pub fn apply_url_transform(url: &url::Url, template: &str) -> Result<url::Url> {
     }
 
     url::Url::parse(&result).map_err(AgetError::UrlParse)
+}
+
+pub fn domain_rule_matches(rule: &DomainRule, url: &url::Url) -> bool {
+    let pattern = match &rule.path_pattern {
+        Some(p) => p,
+        None => return true,
+    };
+    match regex::Regex::new(pattern) {
+        Ok(re) => re.is_match(url.path()),
+        Err(_) => true, // fail open on bad regex (logged elsewhere if needed)
+    }
 }
 
 #[cfg(test)]
@@ -129,5 +141,50 @@ Authorization = "Bearer token123"
         let template = "https://other.com/fixed";
         let result = apply_url_transform(&url, template).unwrap();
         assert_eq!(result.as_str(), "https://other.com/fixed");
+    }
+
+    #[test]
+    fn test_config_parses_path_pattern() {
+        let toml = r#"
+[domains."github.com"]
+url_transform = "https://raw.githubusercontent.com/{owner}/{repo}/HEAD/README.md"
+engine = "direct"
+path_pattern = "^/[^/]+/[^/]+/?$"
+"#;
+        let mut f = NamedTempFile::new().unwrap();
+        f.write_all(toml.as_bytes()).unwrap();
+        let config = Config::load(f.path()).unwrap();
+        let gh = config.domains.get("github.com").unwrap();
+        assert_eq!(gh.path_pattern.as_deref(), Some("^/[^/]+/[^/]+/?$"));
+    }
+
+    #[test]
+    fn test_domain_rule_matches_when_no_path_pattern() {
+        let rule = DomainRule::default();
+        let url = url::Url::parse("https://example.com/anything/here").unwrap();
+        assert!(domain_rule_matches(&rule, &url));
+    }
+
+    #[test]
+    fn test_domain_rule_matches_only_when_pattern_matches() {
+        let rule = DomainRule {
+            path_pattern: Some(r"^/[^/]+/[^/]+/?$".to_string()),
+            ..Default::default()
+        };
+        let ok = url::Url::parse("https://github.com/wevm/curl.md").unwrap();
+        let bad = url::Url::parse("https://github.com/wevm/curl.md/blob/main/README.md").unwrap();
+        assert!(domain_rule_matches(&rule, &ok));
+        assert!(!domain_rule_matches(&rule, &bad));
+    }
+
+    #[test]
+    fn test_domain_rule_invalid_regex_does_not_panic() {
+        let rule = DomainRule {
+            path_pattern: Some("[unclosed".to_string()),
+            ..Default::default()
+        };
+        let url = url::Url::parse("https://example.com/").unwrap();
+        // Bad regex should NOT panic and SHOULD fall back to "matches" so user mistakes don't silently break fetches
+        assert!(domain_rule_matches(&rule, &url));
     }
 }
