@@ -19,13 +19,14 @@ aget/
     ├── config.rs       # Config, DomainRule, apply_url_transform
     ├── error.rs        # AgetError, Result alias
     ├── fetcher.rs      # Fetcher, FetchResponse (reqwest wrapper)
+    ├── profile.rs      # Doc-framework profiles (VitePress, Docusaurus, ...)
     ├── quality.rs      # passes_quality heuristic
     ├── pipeline.rs     # Pipeline orchestrator
     └── engine/
         ├── mod.rs          # Engine trait, EngineResult
         ├── accept_md.rs    # Engine 1
         ├── dot_md.rs       # Engine 2
-        ├── html_extract.rs # Engine 3 (dom_smoothie + htmd)
+        ├── html_extract.rs # Engine 3 (profile → dom_smoothie + htmd)
         └── registry.rs     # build_chain, engine_by_name
 ```
 
@@ -51,6 +52,24 @@ make install  # install to ~/.cargo/bin
 2. Add variant to `engine_by_name()` in `registry.rs`
 3. Add to `DEFAULT_CHAIN` in `registry.rs` if it should be default
 4. Document the name in `aget.toml.example`
+
+## Adding a New Profile
+
+A "profile" lets `html_extract` recognise a documentation framework and
+extract its content root directly, instead of relying on generic readability.
+
+1. In `lib/src/profile.rs`, add a `pub static MY_FRAMEWORK: Profile = Profile { … }`
+   with:
+   - `key`: short identifier
+   - `generator_pattern`: substring to match against `<meta name="generator">` (or `None`)
+   - `needles`: substrings unique to the framework's HTML
+   - `content_selectors`: CSS selectors (priority order) for the content root
+2. Add the new static to the `PROFILES` slice.
+3. Add detection and extraction tests in `profile::tests`.
+4. Run `cargo test -p aget-lib profile::tests` to confirm.
+
+Detection runs in registry order — first match wins. Put more specific
+profiles before more generic ones.
 
 ## Environment Variables
 
