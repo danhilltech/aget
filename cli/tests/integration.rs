@@ -181,8 +181,15 @@ async fn test_chunk_size_writes_single_file_when_content_fits() {
         .output()
         .unwrap();
 
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
-    assert!(out_path.exists(), "single-file output should be at original path");
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        out_path.exists(),
+        "single-file output should be at original path"
+    );
     // Multi-file outputs should NOT have been created
     assert!(!dir.path().join("page-001.md").exists());
 }
@@ -194,7 +201,11 @@ async fn test_chunk_size_writes_multiple_files_when_content_large() {
     let body = format!(
         "# Title\n\n{}",
         (1..=5)
-            .map(|i| format!("## Section {}\n\n{}\n\n", i, "Content text here. ".repeat(20)))
+            .map(|i| format!(
+                "## Section {}\n\n{}\n\n",
+                i,
+                "Content text here. ".repeat(20)
+            ))
             .collect::<String>()
     );
     let _mock = server
@@ -217,11 +228,24 @@ async fn test_chunk_size_writes_multiple_files_when_content_large() {
         .output()
         .unwrap();
 
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
-    assert!(dir.path().join("page-001.md").exists(), "first chunk file should exist");
-    assert!(dir.path().join("page-002.md").exists(), "second chunk file should exist");
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        dir.path().join("page-001.md").exists(),
+        "first chunk file should exist"
+    );
+    assert!(
+        dir.path().join("page-002.md").exists(),
+        "second chunk file should exist"
+    );
     // The original `page.md` path should NOT have been written when chunked
-    assert!(!out_path.exists(), "single-file path should not be written when chunked");
+    assert!(
+        !out_path.exists(),
+        "single-file path should not be written when chunked"
+    );
 }
 
 #[test]
@@ -232,5 +256,48 @@ fn test_chunk_size_without_output_exits_nonzero() {
         .arg("1000")
         .output()
         .unwrap();
+    assert!(!output.status.success());
+}
+
+#[test]
+fn test_completions_bash_outputs_script() {
+    let output = aget().arg("--completions").arg("bash").output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.len() > 100,
+        "expected substantial completion script, got {} bytes",
+        stdout.len()
+    );
+    assert!(
+        stdout.contains("aget"),
+        "completion script should mention the binary name"
+    );
+}
+
+#[test]
+fn test_completions_zsh_outputs_script() {
+    let output = aget().arg("--completions").arg("zsh").output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("#compdef"),
+        "zsh script should contain #compdef directive"
+    );
+}
+
+#[test]
+fn test_completions_unknown_shell_exits_nonzero() {
+    let output = aget()
+        .arg("--completions")
+        .arg("nonsense")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+}
+
+#[test]
+fn test_url_required_when_no_completions() {
+    let output = aget().output().unwrap();
     assert!(!output.status.success());
 }

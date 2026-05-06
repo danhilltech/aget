@@ -89,7 +89,9 @@ async fn run() -> Result<()> {
                 for (i, chunk) in chunks.iter().enumerate() {
                     let part_path = stem.with_file_name(format!(
                         "{}-{:03}{}",
-                        stem.file_name().and_then(|s| s.to_str()).unwrap_or("output"),
+                        stem.file_name()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("output"),
                         i + 1,
                         ext.as_deref().unwrap_or(".md"),
                     ));
