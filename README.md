@@ -136,8 +136,26 @@ Per-domain rules support:
 ```bash
 make build    # debug build
 make test     # run all tests
-make check    # fmt + clippy + tests + build
+make fmt      # format + fix lints
+make check    # fmt check + clippy + tests + build
+make release  # release build
 ```
+
+### Cutting a release
+
+Bump `version` in the workspace `Cargo.toml`, refresh the lockfile,
+commit, tag, push:
+
+```bash
+cargo build --locked
+git commit -am "release: vX.Y.Z"
+git tag vX.Y.Z
+git push && git push --tags
+```
+
+The tag push triggers `.github/workflows/release.yml`, which builds
+binaries for Linux (amd64/arm64), macOS (amd64/arm64), and Windows
+(amd64), publishes a `SHA256SUMS` file, and attests build provenance.
 
 ## License
 

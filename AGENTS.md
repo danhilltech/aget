@@ -12,33 +12,71 @@ config rules for URL transforms, engine overrides, and custom headers.
 
 ```
 aget/
+├── .github/
+│   ├── workflows/
+│   │   ├── ci.yml         # lint + test on push/PR
+│   │   └── release.yml    # build + attest + publish on v* tag
+│   └── dependabot.yml     # weekly cargo + github-actions PRs
 ├── cli/src/
-│   ├── main.rs         # Entry point, run(), wiring
-│   └── cli.rs          # Clap arg definitions
+│   ├── main.rs            # Entry point, run(), wiring
+│   └── cli.rs             # Clap arg definitions
 └── lib/src/
-    ├── config.rs       # Config, DomainRule, apply_url_transform
-    ├── error.rs        # AgetError, Result alias
-    ├── fetcher.rs      # Fetcher, FetchResponse (reqwest wrapper)
-    ├── profile.rs      # Doc-framework profiles (VitePress, Docusaurus, ...)
-    ├── quality.rs      # passes_quality heuristic
-    ├── pipeline.rs     # Pipeline orchestrator
+    ├── lib.rs             # Crate root, re-exports
+    ├── config.rs          # Config, DomainRule, apply_url_transform
+    ├── builtin_rules.rs   # Compiled-in domain rules
+    ├── error.rs           # AgetError, Result alias
+    ├── fetch.rs           # Fetch trait (HTTP GET abstraction)
+    ├── fetcher.rs         # reqwest-backed Fetcher impl
+    ├── caching_fetcher.rs # Fetch decorator that consults the on-disk cache
+    ├── cache.rs           # On-disk SQLite response cache
+    ├── head.rs            # HeadResult — preview metadata (title, size, tokens, ...)
+    ├── chunk.rs           # --chunk-size output splitting
+    ├── profile.rs         # Doc-framework profiles (VitePress, Docusaurus, ...)
+    ├── quality.rs         # passes_quality heuristic
+    ├── pipeline.rs        # Pipeline orchestrator
     └── engine/
-        ├── mod.rs          # Engine trait, EngineResult
-        ├── accept_md.rs    # Engine 1
-        ├── dot_md.rs       # Engine 2
-        ├── html_extract.rs # Engine 3 (profile → dom_smoothie + htmd)
-        └── registry.rs     # build_chain, engine_by_name
+        ├── mod.rs              # Engine trait, EngineResult
+        ├── accept_md.rs        # Engine 1
+        ├── dot_md.rs           # Engine 2
+        ├── html_extract.rs     # Engine 3 (profile → dom_smoothie + htmd)
+        └── registry.rs         # build_chain, engine_by_name
 ```
 
 ## Development
 
 ```bash
-make build    # debug build
-make test     # run all tests
-make fmt      # format + fix lints
-make check    # fmt check + clippy + tests + build
-make install  # install to ~/.cargo/bin
+make build      # debug build
+make run        # cargo run -q -- $(ARGS)   e.g. make run ARGS="https://example.com"
+make test       # run all tests
+make fmt        # format + fix lints
+make check      # fmt check + clippy + tests + build
+make release    # release build
+make install    # install to ~/.cargo/bin (uses --locked)
+make uninstall  # remove from ~/.cargo/bin
+make clean      # cargo clean
 ```
+
+## Releases
+
+Releases are tag-driven. Pushing a `v*` tag triggers
+`.github/workflows/release.yml`, which builds binaries for five
+targets in parallel (linux amd64/arm64, darwin amd64/arm64,
+windows amd64), generates a `SHA256SUMS` manifest, and produces a
+GitHub build-provenance attestation per binary.
+
+To cut a release:
+
+1. Bump `version` in the workspace `Cargo.toml`.
+2. `cargo build --locked` to refresh `Cargo.lock`.
+3. `git commit -am "release: vX.Y.Z" && git tag vX.Y.Z`
+4. `git push && git push --tags`
+
+CI (`.github/workflows/ci.yml`) runs lint + test on every push/PR
+to `main`/`master` (Ubuntu and macOS).
+
+Dependabot opens weekly PRs for `cargo` and `github-actions`
+ecosystems (max 10 open per ecosystem). Treat these as normal PRs —
+they go through the same CI gate.
 
 ## Code Style
 
