@@ -1,4 +1,5 @@
 use clap::Parser;
+use clap_complete::Shell;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -7,7 +8,8 @@ use std::path::PathBuf;
 #[command(version)]
 pub struct Cli {
     /// URL to fetch and convert to Markdown
-    pub url: String,
+    #[arg(required_unless_present = "completions")]
+    pub url: Option<String>,
 
     /// Write output to FILE instead of stdout
     #[arg(short = 'o', long = "output", value_name = "FILE")]
@@ -45,4 +47,13 @@ pub struct Cli {
         conflicts_with = "head"
     )]
     pub chunk_size: Option<usize>,
+
+    /// Print a shell completion script and exit
+    #[arg(
+        long = "completions",
+        value_name = "SHELL",
+        value_enum,
+        conflicts_with_all = ["output", "config", "verbose", "engine", "no_cache", "head", "json", "chunk_size"]
+    )]
+    pub completions: Option<Shell>,
 }
