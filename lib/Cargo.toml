@@ -19,7 +19,7 @@ url.workspace = true
 dirs.workspace = true
 dom_smoothie.workspace = true
 htmd.workspace = true
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.39", features = ["bundled"] }
 sha2 = "0.10"
 httpdate = "1"
 tiktoken-rs = "0.6"
