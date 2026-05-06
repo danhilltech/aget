@@ -1,5 +1,5 @@
 use crate::caching_fetcher::CachingFetcher;
-use crate::config::{apply_url_transform, DomainRule};
+use crate::config::{apply_url_transform, domain_rule_matches, DomainRule};
 use crate::engine::{registry, EngineResult};
 use crate::error::Result;
 use crate::fetch::Fetch;
@@ -43,17 +43,21 @@ impl Pipeline {
         rule: Option<&DomainRule>,
         verbose: bool,
     ) -> Result<PipelineResult> {
+        // If the rule's path_pattern doesn't match this URL, drop the rule entirely
+        // so we use defaults for engines, headers, and URL transform.
+        let effective_rule: Option<&DomainRule> = rule.filter(|r| domain_rule_matches(r, raw_url));
+
         // Apply URL transform if configured
-        let url = match rule.and_then(|r| r.url_transform.as_ref()) {
+        let url = match effective_rule.and_then(|r| r.url_transform.as_ref()) {
             Some(template) => apply_url_transform(raw_url, template)?,
             None => raw_url.clone(),
         };
 
         let domain_headers: &HashMap<String, String> =
-            rule.map(|r| &r.headers).unwrap_or(&EMPTY_HEADERS);
+            effective_rule.map(|r| &r.headers).unwrap_or(&EMPTY_HEADERS);
 
         // "direct" mode — skip engine chain, fetch transformed URL as-is
-        if rule.and_then(|r| r.engine.as_deref()) == Some("direct") {
+        if effective_rule.and_then(|r| r.engine.as_deref()) == Some("direct") {
             if verbose {
                 eprintln!("[aget] direct fetch: {}", url);
             }
@@ -66,7 +70,7 @@ impl Pipeline {
         }
 
         // Run engine chain
-        let engines = registry::build_chain(rule);
+        let engines = registry::build_chain(effective_rule);
         let mut best_effort: Option<(String, String)> = None;
 
         for engine in &engines {
@@ -260,5 +264,41 @@ mod tests {
         assert!(result.content.contains("Mintlify Page"));
         assert!(!result.content.contains("NAV"));
         assert!(!result.content.contains("FOOT"));
+    }
+
+    #[tokio::test]
+    async fn test_pipeline_skips_rule_when_path_pattern_does_not_match() {
+        use crate::config::DomainRule;
+
+        let mut server = mockito::Server::new_async().await;
+        // Server returns reasonable markdown via the default engine chain
+        server
+            .mock("GET", "/repo/blob/main/file.md")
+            .match_header(
+                "Accept",
+                mockito::Matcher::Regex("text/markdown".to_string()),
+            )
+            .with_status(200)
+            .with_header("content-type", "text/markdown")
+            .with_body(GOOD_MD)
+            .create_async()
+            .await;
+
+        let pipeline = Pipeline::new(true).unwrap();
+        let url = Url::parse(&format!("{}/repo/blob/main/file.md", server.url())).unwrap();
+
+        // Rule that would normally rewrite the URL, but path_pattern only matches "/owner/repo"
+        let rule = DomainRule {
+            url_transform: Some("https://should-not-fire.example.com/wrong".to_string()),
+            engine: Some("direct".to_string()),
+            path_pattern: Some(r"^/[^/]+/[^/]+/?$".to_string()),
+            ..Default::default()
+        };
+
+        let result = pipeline.run(&url, Some(&rule), false).await.unwrap();
+
+        // Rule was skipped → engine chain ran instead → accept_md succeeded
+        assert_eq!(result.engine_used, "accept_md");
+        assert!(result.quality_passed);
     }
 }
