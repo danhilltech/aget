@@ -52,14 +52,25 @@ aget tries a chain of engines in order, stopping at the first that returns quali
 
 ## Configuration
 
+### Built-in rules
+
+aget ships with a small set of compiled-in rules so common URLs Just Work
+without any config:
+
+| Domain | Behaviour |
+|---|---|
+| `github.com/{owner}/{repo}` | Rewrites to `raw.githubusercontent.com/{owner}/{repo}/HEAD/README.md` and fetches directly |
+| `raw.githubusercontent.com` | Fetches directly (skips engine chain) |
+
+To override a built-in for a domain, define your own rule for that same
+domain in `~/.aget/config.toml` — your rule replaces the built-in entirely
+(no field-level merging).
+
+### User config
+
 Copy `aget.toml.example` to `~/.aget/config.toml` and customize:
 
 ```toml
-# Rewrite GitHub URLs to raw readme
-[domains."github.com"]
-url_transform = "https://raw.githubusercontent.com/{owner}/{repo}/refs/heads/main/readme.md"
-engine = "direct"
-
 # Per-domain auth headers
 [domains."api.example.com".headers]
 X-API-Key = "your-api-key-here"
@@ -69,6 +80,7 @@ Per-domain rules support:
 - `url_transform` — rewrite the URL before fetching
 - `engine` / `engines` — override the engine chain
 - `headers` — add custom request headers
+- `path_pattern` — a regex on the URL path; rule only applies when it matches
 
 ## Development
 
