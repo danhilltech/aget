@@ -22,18 +22,31 @@ pub struct DomainRule {
 impl Config {
     pub fn load(path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(path).map_err(AgetError::Io)?;
-        toml::from_str(&content).map_err(AgetError::TomlParse)
+        let parsed: Config = toml::from_str(&content).map_err(AgetError::TomlParse)?;
+        Ok(parsed.with_builtins())
     }
 
     pub fn load_default() -> Result<Self> {
-        match Self::default_path() {
-            Some(path) if path.exists() => Self::load(&path),
-            _ => Ok(Self::default()),
-        }
+        let user = match Self::default_path() {
+            Some(path) if path.exists() => {
+                let content = std::fs::read_to_string(&path).map_err(AgetError::Io)?;
+                toml::from_str(&content).map_err(AgetError::TomlParse)?
+            }
+            _ => Self::default(),
+        };
+        Ok(user.with_builtins())
     }
 
     pub fn default_path() -> Option<PathBuf> {
         dirs::home_dir().map(|h| h.join(".aget").join("config.toml"))
+    }
+
+    /// Merge built-in rules under the user-supplied rules (user wins by domain key).
+    pub fn with_builtins(mut self) -> Self {
+        for (domain, rule) in crate::builtin_rules::builtin_rules() {
+            self.domains.entry(domain).or_insert(rule);
+        }
+        self
     }
 }
 
@@ -121,7 +134,8 @@ Authorization = "Bearer token123"
         let mut f = NamedTempFile::new().unwrap();
         f.write_all(b"").unwrap();
         let config = Config::load(f.path()).unwrap();
-        assert!(config.domains.is_empty());
+        // After merging built-ins, domains will contain at least github.com
+        assert!(config.domains.contains_key("github.com"));
     }
 
     #[test]
@@ -186,5 +200,48 @@ path_pattern = "^/[^/]+/[^/]+/?$"
         let url = url::Url::parse("https://example.com/").unwrap();
         // Bad regex should NOT panic and SHOULD fall back to "matches" so user mistakes don't silently break fetches
         assert!(domain_rule_matches(&rule, &url));
+    }
+
+    #[test]
+    fn test_load_default_includes_builtin_rules_when_no_user_config() {
+        // We cannot guarantee ~/.aget/config.toml does not exist on the runner, but
+        // calling Config::default().with_builtins() should always produce the merged map.
+        let config = Config::default().with_builtins();
+        assert!(
+            config.domains.contains_key("github.com"),
+            "default+builtins should include github.com"
+        );
+    }
+
+    #[test]
+    fn test_user_rule_overrides_builtin_for_same_domain() {
+        let toml = r#"
+[domains."github.com"]
+engine = "html_extract"
+"#;
+        let mut f = NamedTempFile::new().unwrap();
+        f.write_all(toml.as_bytes()).unwrap();
+        let config = Config::load(f.path()).unwrap();
+        let gh = config.domains.get("github.com").unwrap();
+        // User won — engine is the user-supplied one, not "direct"
+        assert_eq!(gh.engine.as_deref(), Some("html_extract"));
+        // User's rule does NOT inherit url_transform from the built-in
+        assert!(gh.url_transform.is_none());
+    }
+
+    #[test]
+    fn test_load_fills_in_builtins_for_undefined_domains() {
+        let toml = r#"
+[domains."example.com"]
+engine = "html_extract"
+"#;
+        let mut f = NamedTempFile::new().unwrap();
+        f.write_all(toml.as_bytes()).unwrap();
+        let config = Config::load(f.path()).unwrap();
+        // User domain present
+        assert!(config.domains.contains_key("example.com"));
+        // Built-in github.com still present (user didn't override it)
+        let gh = config.domains.get("github.com").expect("github.com built-in should remain");
+        assert_eq!(gh.engine.as_deref(), Some("direct"));
     }
 }
