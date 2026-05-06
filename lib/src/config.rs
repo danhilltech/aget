@@ -244,4 +244,26 @@ engine = "html_extract"
         let gh = config.domains.get("github.com").expect("github.com built-in should remain");
         assert_eq!(gh.engine.as_deref(), Some("direct"));
     }
+
+    #[test]
+    fn test_builtin_github_transform_renders_expected_url() {
+        use super::apply_url_transform;
+        let config = Config::default().with_builtins();
+        let rule = config.domains.get("github.com").unwrap();
+        let template = rule.url_transform.as_deref().unwrap();
+        let url = url::Url::parse("https://github.com/wevm/curl.md").unwrap();
+        let result = apply_url_transform(&url, template).unwrap();
+        assert_eq!(
+            result.as_str(),
+            "https://raw.githubusercontent.com/wevm/curl.md/HEAD/README.md"
+        );
+    }
+
+    #[test]
+    fn test_builtin_github_path_pattern_rejects_blob_urls() {
+        let config = Config::default().with_builtins();
+        let rule = config.domains.get("github.com").unwrap();
+        let blob_url = url::Url::parse("https://github.com/wevm/curl.md/blob/main/README.md").unwrap();
+        assert!(!domain_rule_matches(rule, &blob_url));
+    }
 }
