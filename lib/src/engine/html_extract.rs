@@ -8,6 +8,14 @@ use url::Url;
 pub struct HtmlExtractEngine;
 
 fn html_to_markdown(html: &str, url: &Url) -> Result<String> {
+    // 1) Try framework-profile-based extraction first.
+    if let Some(profile) = crate::profile::detect_profile(html) {
+        if let Some(md) = crate::profile::extract_with_profile(html, profile, url) {
+            return Ok(md);
+        }
+    }
+
+    // 2) Fall back to readability + htmd.
     let mut readability = dom_smoothie::Readability::new(html, Some(url.as_str()), None)
         .map_err(|e| AgetError::extraction(e.to_string()))?;
 
@@ -96,5 +104,65 @@ mod tests {
 
         assert!(matches!(result, EngineResult::Success(_)));
         mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn test_html_extract_uses_profile_when_detected() {
+        let mut server = mockito::Server::new_async().await;
+        let _mock = server
+            .mock("GET", "/")
+            .with_status(200)
+            .with_header("content-type", "text/html")
+            .with_body(
+                r#"<!doctype html><html><head><meta name="generator" content="VitePress"></head>
+            <body>
+              <nav>SHOULD_NOT_APPEAR</nav>
+              <div id="VPContent">
+                <h1>From Profile</h1>
+                <p>This came via the VitePress profile path.</p>
+              </div>
+            </body></html>"#,
+            )
+            .create_async()
+            .await;
+
+        let fetcher = Fetcher::new().unwrap();
+        let url = Url::parse(&server.url()).unwrap();
+        let result = HtmlExtractEngine
+            .fetch(&url, &fetcher, &HashMap::new())
+            .await
+            .unwrap();
+
+        let content = match result {
+            EngineResult::Success(s) => s,
+            _ => panic!("expected Success"),
+        };
+        assert!(content.contains("From Profile"));
+        assert!(!content.contains("SHOULD_NOT_APPEAR"));
+    }
+
+    #[tokio::test]
+    async fn test_html_extract_falls_back_to_readability_when_no_profile_matches() {
+        let mut server = mockito::Server::new_async().await;
+        // No generator meta, no profile needles — generic article
+        let _mock = server
+            .mock("GET", "/")
+            .with_status(200)
+            .with_header("content-type", "text/html")
+            .with_body(SIMPLE_HTML)
+            .create_async()
+            .await;
+
+        let fetcher = Fetcher::new().unwrap();
+        let url = Url::parse(&server.url()).unwrap();
+        let result = HtmlExtractEngine
+            .fetch(&url, &fetcher, &HashMap::new())
+            .await
+            .unwrap();
+
+        assert!(matches!(result, EngineResult::Success(_)));
+        if let EngineResult::Success(content) = result {
+            assert!(content.contains("Hello"), "fallback should still extract content");
+        }
     }
 }
