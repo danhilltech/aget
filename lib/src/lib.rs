@@ -7,6 +7,7 @@ pub mod fetch;
 pub mod fetcher;
 pub mod head;
 pub mod pipeline;
+pub mod profile;
 pub mod quality;
 
 pub use config::Config;
