@@ -16,7 +16,39 @@ pub static VITEPRESS: Profile = Profile {
     content_selectors: &["#VPContent", ".VPDoc", ".vp-doc"],
 };
 
-pub static PROFILES: &[&Profile] = &[&VITEPRESS];
+pub static DOCUSAURUS: Profile = Profile {
+    key: "docusaurus",
+    generator_pattern: Some("docusaurus"),
+    needles: &["class=\"theme-doc-markdown", "class=\"markdown markdown"],
+    content_selectors: &[".theme-doc-markdown", ".markdown"],
+};
+
+pub static MINTLIFY: Profile = Profile {
+    key: "mintlify",
+    generator_pattern: Some("mintlify"),
+    needles: &["id=\"content-area\"", "id=\"content-container\""],
+    content_selectors: &["#content-container", "#content-area"],
+};
+
+pub static STARLIGHT: Profile = Profile {
+    key: "starlight",
+    generator_pattern: Some("starlight"),
+    needles: &["class=\"sl-markdown-content\"", "id=\"starlight__sidebar\""],
+    content_selectors: &[".sl-markdown-content"],
+};
+
+pub static MKDOCS: Profile = Profile {
+    key: "mkdocs",
+    generator_pattern: Some("mkdocs"),
+    needles: &[
+        "data-md-component=\"content\"",
+        "data-md-component=content",
+        "id=\"mkdocs_search_modal\"",
+    ],
+    content_selectors: &[".md-content__inner", ".md-content"],
+};
+
+pub static PROFILES: &[&Profile] = &[&VITEPRESS, &DOCUSAURUS, &MINTLIFY, &STARLIGHT, &MKDOCS];
 
 /// Detect which (if any) profile best matches the given HTML. First match wins.
 pub fn detect_profile(html: &str) -> Option<&'static Profile> {
@@ -138,5 +170,52 @@ mod tests {
         let html = r#"<html><body><div id="VPContent">   </div></body></html>"#;
         let url = url::Url::parse("https://example.com/").unwrap();
         assert!(extract_with_profile(html, &VITEPRESS, &url).is_none());
+    }
+
+    #[test]
+    fn test_detect_docusaurus_via_class() {
+        let html = r#"<html><body><div class="theme-doc-markdown markdown"><p>x</p></div></body></html>"#;
+        let p = detect_profile(html).expect("docusaurus should match");
+        assert_eq!(p.key, "docusaurus");
+    }
+
+    #[test]
+    fn test_detect_mintlify_via_id() {
+        let html = r#"<html><body><div id="content-area">x</div></body></html>"#;
+        let p = detect_profile(html).expect("mintlify should match");
+        assert_eq!(p.key, "mintlify");
+    }
+
+    #[test]
+    fn test_detect_starlight_via_generator() {
+        let html = r#"<meta name="generator" content="Starlight 0.30.0">"#;
+        let p = detect_profile(html).expect("starlight should match");
+        assert_eq!(p.key, "starlight");
+    }
+
+    #[test]
+    fn test_detect_mkdocs_via_data_attr() {
+        let html = r#"<html><body><div data-md-component="content"><p>x</p></div></body></html>"#;
+        let p = detect_profile(html).expect("mkdocs should match");
+        assert_eq!(p.key, "mkdocs");
+    }
+
+    #[test]
+    fn test_extract_docusaurus_content() {
+        let html = r#"
+            <html><body>
+              <header>nav</header>
+              <article class="theme-doc-markdown markdown">
+                <h1>Doc Title</h1>
+                <p>Body text.</p>
+              </article>
+            </body></html>
+        "#;
+        let url = url::Url::parse("https://example.com/").unwrap();
+        let p = detect_profile(html).unwrap();
+        assert_eq!(p.key, "docusaurus");
+        let md = extract_with_profile(html, p, &url).unwrap();
+        assert!(md.contains("Doc Title"));
+        assert!(!md.contains("nav"));
     }
 }
