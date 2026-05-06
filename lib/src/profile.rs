@@ -72,8 +72,7 @@ fn extract_generator_meta(html: &str) -> Option<String> {
     use std::sync::OnceLock;
     static SELECTOR: OnceLock<scraper::Selector> = OnceLock::new();
     let selector = SELECTOR.get_or_init(|| {
-        scraper::Selector::parse(r#"meta[name="generator"]"#)
-            .expect("static selector must compile")
+        scraper::Selector::parse(r#"meta[name="generator"]"#).expect("static selector must compile")
     });
     let document = scraper::Html::parse_document(html);
     document
