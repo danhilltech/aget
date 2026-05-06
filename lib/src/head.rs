@@ -1,7 +1,7 @@
-use serde::Serialize;
 use crate::config::DomainRule;
 use crate::error::Result;
 use crate::pipeline::Pipeline;
+use serde::Serialize;
 use url::Url;
 
 #[derive(Debug, Serialize)]

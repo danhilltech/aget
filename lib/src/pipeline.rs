@@ -74,7 +74,10 @@ impl Pipeline {
                 eprintln!("[aget] trying engine: {}", engine.name());
             }
 
-            match engine.fetch(&url, self.fetcher.as_ref(), domain_headers).await? {
+            match engine
+                .fetch(&url, self.fetcher.as_ref(), domain_headers)
+                .await?
+            {
                 EngineResult::Skip(reason) => {
                     if verbose {
                         eprintln!("[aget] {}: skipped ({})", engine.name(), reason);
@@ -142,7 +145,7 @@ mod tests {
             .create_async()
             .await;
 
-        let pipeline = Pipeline::new(true).unwrap();  // no_cache=true avoids DB in tests
+        let pipeline = Pipeline::new(true).unwrap(); // no_cache=true avoids DB in tests
         let url = Url::parse(&server.url()).unwrap();
         let result = pipeline.run(&url, None, false).await.unwrap();
 
@@ -161,7 +164,7 @@ mod tests {
             .await;
 
         let base = server.url();
-        let pipeline = Pipeline::new(true).unwrap();  // no_cache=true avoids DB in tests
+        let pipeline = Pipeline::new(true).unwrap(); // no_cache=true avoids DB in tests
         let url = Url::parse(&format!("{}/original", base)).unwrap();
         let rule = DomainRule {
             url_transform: Some(format!("{}/readme.md", base)),
@@ -205,7 +208,7 @@ mod tests {
             .create_async()
             .await;
 
-        let pipeline = Pipeline::new(true).unwrap();  // no_cache=true avoids DB in tests
+        let pipeline = Pipeline::new(true).unwrap(); // no_cache=true avoids DB in tests
         let url = Url::parse(&server.url()).unwrap();
         let result = pipeline.run(&url, None, false).await.unwrap();
 

@@ -1,5 +1,5 @@
 use crate::error::Result;
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::{params, Connection, OptionalExtension};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::SystemTime;
@@ -26,7 +26,9 @@ impl Cache {
             std::fs::create_dir_all(parent)?;
         }
         let conn = Connection::open(path)?;
-        let cache = Self { conn: Mutex::new(conn) };
+        let cache = Self {
+            conn: Mutex::new(conn),
+        };
         cache.init_schema()?;
         Ok(cache)
     }
@@ -38,7 +40,9 @@ impl Cache {
     #[cfg(test)]
     pub fn open_in_memory() -> Result<Self> {
         let conn = Connection::open_in_memory()?;
-        let cache = Self { conn: Mutex::new(conn) };
+        let cache = Self {
+            conn: Mutex::new(conn),
+        };
         cache.init_schema()?;
         Ok(cache)
     }
@@ -63,23 +67,24 @@ impl Cache {
 
     pub fn get(&self, url: &str, headers_hash: &str) -> Result<Option<CacheEntry>> {
         let conn = self.conn.lock().unwrap();
-        let entry = conn.query_row(
-            "SELECT status, content_type, body, etag, last_modified, max_age_secs, cached_at
+        let entry = conn
+            .query_row(
+                "SELECT status, content_type, body, etag, last_modified, max_age_secs, cached_at
              FROM entries WHERE url = ?1 AND request_headers_hash = ?2",
-            params![url, headers_hash],
-            |row| {
-                Ok(CacheEntry {
-                    status: row.get::<_, i64>(0)? as u16,
-                    content_type: row.get(1)?,
-                    body: row.get(2)?,
-                    etag: row.get(3)?,
-                    last_modified: row.get(4)?,
-                    max_age_secs: row.get(5)?,
-                    cached_at: row.get(6)?,
-                })
-            },
-        )
-        .optional()?;
+                params![url, headers_hash],
+                |row| {
+                    Ok(CacheEntry {
+                        status: row.get::<_, i64>(0)? as u16,
+                        content_type: row.get(1)?,
+                        body: row.get(2)?,
+                        etag: row.get(3)?,
+                        last_modified: row.get(4)?,
+                        max_age_secs: row.get(5)?,
+                        cached_at: row.get(6)?,
+                    })
+                },
+            )
+            .optional()?;
         Ok(entry)
     }
 
@@ -122,9 +127,7 @@ pub fn unix_now() -> i64 {
 }
 
 pub fn is_no_store(cache_control: &str) -> bool {
-    cache_control
-        .split(',')
-        .any(|d| d.trim() == "no-store")
+    cache_control.split(',').any(|d| d.trim() == "no-store")
 }
 
 pub fn compute_max_age_secs(cache_control: Option<&str>, expires: Option<&str>) -> Option<i64> {
@@ -185,8 +188,13 @@ mod tests {
             max_age_secs: Some(3600),
             cached_at: unix_now(),
         };
-        cache.store("https://example.com/", "hash123", &entry).unwrap();
-        let retrieved = cache.get("https://example.com/", "hash123").unwrap().unwrap();
+        cache
+            .store("https://example.com/", "hash123", &entry)
+            .unwrap();
+        let retrieved = cache
+            .get("https://example.com/", "hash123")
+            .unwrap()
+            .unwrap();
         assert_eq!(retrieved.body, "# Hello");
         assert_eq!(retrieved.etag.as_deref(), Some("\"abc123\""));
         assert_eq!(retrieved.status, 200);
@@ -204,8 +212,13 @@ mod tests {
             max_age_secs: Some(3600),
             cached_at: unix_now(),
         };
-        cache.store("https://example.com/", "hash-a", &entry).unwrap();
-        assert!(cache.get("https://example.com/", "hash-b").unwrap().is_none());
+        cache
+            .store("https://example.com/", "hash-a", &entry)
+            .unwrap();
+        assert!(cache
+            .get("https://example.com/", "hash-b")
+            .unwrap()
+            .is_none());
     }
 
     #[test]
@@ -221,7 +234,9 @@ mod tests {
             cached_at: 1000,
         };
         cache.store("https://example.com/", "hash", &entry).unwrap();
-        cache.refresh_cached_at("https://example.com/", "hash").unwrap();
+        cache
+            .refresh_cached_at("https://example.com/", "hash")
+            .unwrap();
         let retrieved = cache.get("https://example.com/", "hash").unwrap().unwrap();
         assert!(retrieved.cached_at > 1000);
     }
@@ -244,7 +259,10 @@ mod tests {
     fn test_compute_max_age_from_max_age_directive() {
         assert_eq!(compute_max_age_secs(Some("max-age=600"), None), Some(600));
         assert_eq!(compute_max_age_secs(Some("max-age=0"), None), Some(0));
-        assert_eq!(compute_max_age_secs(Some("public, max-age=3600"), None), Some(3600));
+        assert_eq!(
+            compute_max_age_secs(Some("public, max-age=3600"), None),
+            Some(3600)
+        );
     }
 
     #[test]

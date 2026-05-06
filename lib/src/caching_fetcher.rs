@@ -1,4 +1,6 @@
-use crate::cache::{compute_max_age_secs, effective_max_age, is_no_store, unix_now, Cache, CacheEntry};
+use crate::cache::{
+    compute_max_age_secs, effective_max_age, is_no_store, unix_now, Cache, CacheEntry,
+};
 use crate::error::Result;
 use crate::fetch::Fetch;
 use crate::fetcher::{FetchResponse, Fetcher};

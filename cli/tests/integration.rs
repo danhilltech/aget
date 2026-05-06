@@ -125,8 +125,8 @@ async fn test_head_json() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let json: serde_json::Value = serde_json::from_str(&stdout)
-        .expect("stdout should be valid JSON");
+    let json: serde_json::Value =
+        serde_json::from_str(&stdout).expect("stdout should be valid JSON");
     assert!(json.get("url").is_some());
     assert!(json.get("engine_used").is_some());
     assert!(json.get("size_bytes").is_some());
