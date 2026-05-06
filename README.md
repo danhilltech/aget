@@ -4,8 +4,46 @@ A curl-like CLI that fetches URLs and outputs Markdown.
 
 ## Install
 
+### Pre-built binaries
+
+Download the binary for your platform from the [latest release](https://github.com/danhilltech/aget/releases/latest):
+
 ```bash
-cargo install --path cli
+# macOS Apple Silicon
+curl -L https://github.com/danhilltech/aget/releases/latest/download/aget-darwin-arm64 -o aget
+chmod +x aget && sudo mv aget /usr/local/bin/
+
+# macOS Intel
+curl -L https://github.com/danhilltech/aget/releases/latest/download/aget-darwin-amd64 -o aget
+chmod +x aget && sudo mv aget /usr/local/bin/
+
+# Linux x86_64
+curl -L https://github.com/danhilltech/aget/releases/latest/download/aget-linux-amd64 -o aget
+chmod +x aget && sudo mv aget /usr/local/bin/
+
+# Linux arm64
+curl -L https://github.com/danhilltech/aget/releases/latest/download/aget-linux-arm64 -o aget
+chmod +x aget && sudo mv aget /usr/local/bin/
+```
+
+For Windows, download `aget-windows-amd64.exe` from the release page and put it on your `PATH`.
+
+Each release publishes a `SHA256SUMS` file. Verify integrity with:
+
+```bash
+sha256sum -c SHA256SUMS
+```
+
+Each binary also has a [GitHub build provenance attestation](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds). Verify with:
+
+```bash
+gh attestation verify aget --repo danhilltech/aget
+```
+
+### From source
+
+```bash
+cargo install --locked --path cli
 ```
 
 Or via make:
