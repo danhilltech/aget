@@ -51,7 +51,24 @@ fn extract_generator_meta(html: &str) -> Option<String> {
 /// Try to extract markdown from `html` using `profile`'s content selectors.
 /// Returns `None` if no selector matches or the result is empty.
 pub fn extract_with_profile(html: &str, profile: &Profile, url: &url::Url) -> Option<String> {
-    let _ = (html, profile, url);
+    let _ = url; // reserved for future use (e.g. resolving relative links)
+    let document = scraper::Html::parse_document(html);
+    for selector_str in profile.content_selectors {
+        let selector = match scraper::Selector::parse(selector_str) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+        let element = match document.select(&selector).next() {
+            Some(e) => e,
+            None => continue,
+        };
+        let inner_html = element.inner_html();
+        let markdown = htmd::convert(&inner_html).ok()?;
+        let trimmed = markdown.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
     None
 }
 
@@ -87,5 +104,39 @@ mod tests {
     fn test_detect_generator_match_is_case_insensitive() {
         let html = r#"<meta name="generator" content="VITEPRESS">"#;
         assert!(detect_profile(html).is_some());
+    }
+
+    #[test]
+    fn test_extract_with_profile_finds_content_root_and_returns_markdown() {
+        let html = r#"
+            <html><body>
+              <nav>Should be excluded</nav>
+              <div id="VPContent">
+                <h1>Hello</h1>
+                <p>This is a paragraph with <strong>bold</strong> text.</p>
+              </div>
+              <footer>Also excluded</footer>
+            </body></html>
+        "#;
+        let url = url::Url::parse("https://example.com/page").unwrap();
+        let md = extract_with_profile(html, &VITEPRESS, &url).expect("should extract");
+        assert!(md.contains("Hello"), "title should be present, got: {}", md);
+        assert!(md.contains("**bold**") || md.contains("__bold__"), "bold should be present");
+        assert!(!md.contains("Should be excluded"), "nav should NOT be present");
+        assert!(!md.contains("Also excluded"), "footer should NOT be present");
+    }
+
+    #[test]
+    fn test_extract_with_profile_returns_none_when_no_selector_matches() {
+        let html = r#"<html><body><p>nothing matches the VP selectors here</p></body></html>"#;
+        let url = url::Url::parse("https://example.com/").unwrap();
+        assert!(extract_with_profile(html, &VITEPRESS, &url).is_none());
+    }
+
+    #[test]
+    fn test_extract_with_profile_returns_none_when_content_root_is_empty() {
+        let html = r#"<html><body><div id="VPContent">   </div></body></html>"#;
+        let url = url::Url::parse("https://example.com/").unwrap();
+        assert!(extract_with_profile(html, &VITEPRESS, &url).is_none());
     }
 }
