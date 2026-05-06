@@ -128,4 +128,42 @@ mod tests {
             assert!(c.starts_with("## "), "chunk should start with '## ', got: {:?}", &c[..c.len().min(20)]);
         }
     }
+
+    #[test]
+    fn test_falls_through_to_h3_when_no_h2() {
+        let content = "# Title\n\nIntro.\n\n### Sub A\n\nContent A here.\n\n### Sub B\n\nContent B here.\n";
+        let chunks = chunk_markdown(content, 60);
+        assert!(chunks.len() >= 2);
+        assert_eq!(chunks.join(""), content);
+    }
+
+    #[test]
+    fn test_hard_cut_when_no_boundaries() {
+        // One long line of repeated chars with no boundary characters at all
+        let content = "a".repeat(500);
+        let chunks = chunk_markdown(&content, 100);
+        assert!(chunks.len() >= 5, "expected at least 5 chunks, got {}", chunks.len());
+        for c in &chunks {
+            assert!(c.len() <= 100, "chunk exceeded max: {}", c.len());
+        }
+        assert_eq!(chunks.join(""), content);
+    }
+
+    #[test]
+    fn test_preserves_unicode() {
+        let content = "# 日本語\n\n本文がここにあります。たくさんの文字があります。\n\n## セクション2\n\nもっとテキスト。\n";
+        let chunks = chunk_markdown(content, 30);
+        assert!(chunks.len() >= 2);
+        // Concatenation must equal original (no byte-boundary corruption)
+        assert_eq!(chunks.join(""), content);
+    }
+
+    #[test]
+    fn test_zero_max_returns_per_char_chunks_for_no_boundary_input() {
+        // Edge case: very small max with no boundaries — should not infinite-loop
+        let content = "abcdef";
+        let chunks = chunk_markdown(content, 1);
+        assert_eq!(chunks.len(), 6);
+        assert_eq!(chunks.join(""), content);
+    }
 }
