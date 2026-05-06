@@ -1,14 +1,25 @@
-.PHONY: build test fmt check release install
+.PHONY: build run release clean check test fmt install uninstall
 
 build:
 	cargo build
 
+run:
+	cargo run -q -- $(ARGS)
+
+release:
+	cargo build --release
+
+install:
+	cargo install --locked --path cli
+
+uninstall:
+	cargo uninstall aget
+
+clean:
+	cargo clean
+
 test:
 	cargo test
-
-fmt:
-	cargo fmt
-	cargo clippy --fix --allow-dirty
 
 check:
 	cargo fmt --check
@@ -16,8 +27,6 @@ check:
 	cargo test
 	cargo build
 
-release:
-	cargo build --release
-
-install:
-	cargo install --path cli
+fmt:
+	cargo fmt
+	cargo clippy --fix --allow-dirty --allow-staged
