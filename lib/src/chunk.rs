@@ -46,7 +46,7 @@ fn split_keeping_separator(text: &str, separator: &str) -> Vec<String> {
     // rest of the separator begins the next section.
     let leading_newlines = separator.bytes().take_while(|&b| b == b'\n').count();
     let sep_prefix = &separator[..leading_newlines]; // e.g. "\n"
-    let sep_tail = &separator[leading_newlines..];   // e.g. "## "
+    let sep_tail = &separator[leading_newlines..]; // e.g. "## "
 
     let mut sections: Vec<String> = Vec::new();
     let mut pos = 0usize;
@@ -116,7 +116,11 @@ mod tests {
         let content = "# Title\n\nIntro paragraph.\n\n## Section A\n\nLots of text in section A.\n\n## Section B\n\nLots of text in section B.\n";
         // Force splitting by setting max_chars below total length but above each section length
         let chunks = chunk_markdown(content, 80);
-        assert!(chunks.len() >= 2, "expected at least 2 chunks, got {}", chunks.len());
+        assert!(
+            chunks.len() >= 2,
+            "expected at least 2 chunks, got {}",
+            chunks.len()
+        );
         // No chunk should exceed max_chars (allowing slack for boundary inclusion)
         for c in &chunks {
             assert!(c.len() <= 120, "chunk too long: {} chars", c.len());
@@ -125,13 +129,18 @@ mod tests {
         assert_eq!(chunks.join(""), content);
         // Each chunk after the first should start with "## "
         for c in chunks.iter().skip(1) {
-            assert!(c.starts_with("## "), "chunk should start with '## ', got: {:?}", &c[..c.len().min(20)]);
+            assert!(
+                c.starts_with("## "),
+                "chunk should start with '## ', got: {:?}",
+                &c[..c.len().min(20)]
+            );
         }
     }
 
     #[test]
     fn test_falls_through_to_h3_when_no_h2() {
-        let content = "# Title\n\nIntro.\n\n### Sub A\n\nContent A here.\n\n### Sub B\n\nContent B here.\n";
+        let content =
+            "# Title\n\nIntro.\n\n### Sub A\n\nContent A here.\n\n### Sub B\n\nContent B here.\n";
         let chunks = chunk_markdown(content, 60);
         assert!(chunks.len() >= 2);
         assert_eq!(chunks.join(""), content);
@@ -142,7 +151,11 @@ mod tests {
         // One long line of repeated chars with no boundary characters at all
         let content = "a".repeat(500);
         let chunks = chunk_markdown(&content, 100);
-        assert!(chunks.len() >= 5, "expected at least 5 chunks, got {}", chunks.len());
+        assert!(
+            chunks.len() >= 5,
+            "expected at least 5 chunks, got {}",
+            chunks.len()
+        );
         for c in &chunks {
             assert!(c.len() <= 100, "chunk exceeded max: {}", c.len());
         }
