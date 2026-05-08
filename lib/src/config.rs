@@ -186,7 +186,8 @@ path_pattern = "^/[^/]+/[^/]+/?$"
             ..Default::default()
         };
         let ok = url::Url::parse("https://github.com/danhilltech/aget").unwrap();
-        let bad = url::Url::parse("https://github.com/danhilltech/aget/blob/main/README.md").unwrap();
+        let bad =
+            url::Url::parse("https://github.com/danhilltech/aget/blob/main/README.md").unwrap();
         assert!(domain_rule_matches(&rule, &ok));
         assert!(!domain_rule_matches(&rule, &bad));
     }
